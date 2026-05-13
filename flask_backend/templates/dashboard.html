@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comment Moderation Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            min-height: 100vh;
+            color: #e2e8f0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 40px;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        h1 {
+            font-size: 2.5em;
+            font-weight: 700;
+            background: linear-gradient(135deg, #60a5fa, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            color: white;
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.6);
+        }
+
+        .btn-secondary {
+            background: rgba(148, 163, 184, 0.1);
+            color: #e2e8f0;
+            border: 1px solid rgba(148, 163, 184, 0.3);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(148, 163, 184, 0.2);
+            border-color: rgba(148, 163, 184, 0.5);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .stat-card {
+            background: rgba(30, 41, 59, 0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 16px;
+            padding: 25px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(96, 165, 250, 0.4);
+            box-shadow: 0 10px 30px rgba(59, 130, 246, 0.2);
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 200px;
+            height: 200px;
+            background: radial-gradient(circle, rgba(59, 130, 246, 0.1), transparent);
+            border-radius: 50%;
+        }
+
+        .stat-content {
+            position: relative;
+            z-index: 1;
+        }
+
+        .stat-label {
+            color: #94a3b8;
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #60a5fa, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .stat-change {
+            font-size: 12px;
+            margin-top: 8px;
+            color: #4ade80;
+        }
+
+        .charts-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .chart-container {
+            background: rgba(30, 41, 59, 0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 16px;
+            padding: 25px;
+            transition: all 0.3s ease;
+        }
+
+        .chart-container:hover {
+            border-color: rgba(96, 165, 250, 0.4);
+            box-shadow: 0 10px 30px rgba(59, 130, 246, 0.2);
+        }
+
+        .chart-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: #e2e8f0;
+        }
+
+        .search-filter {
+            background: rgba(30, 41, 59, 0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 30px;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .search-input {
+            flex: 1;
+            min-width: 200px;
+            padding: 12px 16px;
+            background: rgba(15, 23, 42, 0.5);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 8px;
+            color: #e2e8f0;
+            font-size: 14px;
+        }
+
+        .search-input::placeholder {
+            color: #64748b;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: rgba(96, 165, 250, 0.5);
+            background: rgba(15, 23, 42, 0.8);
+        }
+
+        select {
+            padding: 12px 16px;
+            background: rgba(15, 23, 42, 0.5);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 8px;
+            color: #e2e8f0;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        select:focus {
+            outline: none;
+            border-color: rgba(96, 165, 250, 0.5);
+        }
+
+        .comments-table {
+            background: rgba(30, 41, 59, 0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 16px;
+            overflow: hidden;
+            margin-bottom: 40px;
+        }
+
+        .table-title {
+            font-size: 18px;
+            font-weight: 600;
+            padding: 20px 25px;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+            color: #e2e8f0;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            background: rgba(15, 23, 42, 0.5);
+            padding: 16px;
+            text-align: left;
+            font-weight: 600;
+            color: #94a3b8;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+        }
+
+        td {
+            padding: 16px;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+            font-size: 14px;
+        }
+
+        tr:hover {
+            background: rgba(59, 130, 246, 0.05);
+        }
+
+        .comment-text {
+            max-width: 300px;
+            word-break: break-word;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            text-align: center;
+            min-width: 80px;
+        }
+
+        .badge-red {
+            background: rgba(239, 68, 68, 0.2);
+            color: #fca5a5;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .badge-green {
+            background: rgba(34, 197, 94, 0.2);
+            color: #86efac;
+            border: 1px solid rgba(34, 197, 94, 0.3);
+        }
+
+        .badge-yellow {
+            background: rgba(234, 179, 8, 0.2);
+            color: #fcd34d;
+            border: 1px solid rgba(234, 179, 8, 0.3);
+        }
+
+        .badge-orange {
+            background: rgba(249, 115, 22, 0.2);
+            color: #fdba74;
+            border: 1px solid rgba(249, 115, 22, 0.3);
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+        }
+
+        .action-btn {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: rgba(59, 130, 246, 0.2);
+            color: #60a5fa;
+            border: 1px solid rgba(59, 130, 246, 0.3);
+        }
+
+        .action-btn:hover {
+            background: rgba(59, 130, 246, 0.3);
+            border-color: rgba(59, 130, 246, 0.5);
+        }
+
+        .action-btn.delete {
+            background: rgba(239, 68, 68, 0.2);
+            color: #fca5a5;
+            border-color: rgba(239, 68, 68, 0.3);
+        }
+
+        .action-btn.delete:hover {
+            background: rgba(239, 68, 68, 0.3);
+            border-color: rgba(239, 68, 68, 0.5);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #94a3b8;
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        .pagination {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 20px;
+            padding: 20px;
+        }
+
+        .pagination-btn {
+            padding: 8px 12px;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            background: rgba(15, 23, 42, 0.5);
+            color: #e2e8f0;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .pagination-btn:hover {
+            border-color: rgba(96, 165, 250, 0.5);
+            background: rgba(59, 130, 246, 0.2);
+        }
+
+        .pagination-btn.active {
+            background: rgba(59, 130, 246, 0.4);
+            border-color: rgba(96, 165, 250, 0.6);
+        }
+
+        .responsive {
+            overflow-x: auto;
+        }
+
+        @media (max-width: 1024px) {
+            .charts-section {
+                grid-template-columns: 1fr;
+            }
+
+            h1 {
+                font-size: 2em;
+            }
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+
+            header {
+                flex-direction: column;
+            }
+
+            .search-filter {
+                flex-direction: column;
+            }
+
+            .search-input {
+                width: 100%;
+            }
+
+            table {
+                font-size: 12px;
+            }
+
+            td, th {
+                padding: 10px;
+            }
+
+            .comment-text {
+                max-width: 150px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📊 Comment Moderation Dashboard</h1>
+            <div class="header-actions">
+                <a href="/analyzer" class="btn btn-primary">➕ Analyze Comment</a>
+                <button class="btn btn-secondary" onclick="exportCSV()">📥 Export CSV</button>
+                <button class="btn btn-secondary" onclick="exportPDF()">📄 Export PDF</button>
+                <button class="btn btn-secondary" onclick="refreshData()">🔄 Refresh</button>
+            </div>
+        </header>
+
+        <!-- Statistics -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-content">
+                    <div class="stat-label">Total Comments</div>
+                    <div class="stat-value" id="total-comments">0</div>
+                    <div class="stat-change" id="total-change">Analyzed</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-content">
+                    <div class="stat-label">🚨 Toxic Comments</div>
+                    <div class="stat-value" id="toxic-comments">0</div>
+                    <div class="stat-change" id="toxic-percentage">0%</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-content">
+                    <div class="stat-label">✅ Safe Comments</div>
+                    <div class="stat-value" id="safe-comments">0</div>
+                    <div class="stat-change" id="safe-percentage">0%</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts -->
+        <div class="charts-section">
+            <div class="chart-container">
+                <h3 class="chart-title">Toxic vs Safe Distribution</h3>
+                <canvas id="toxicity-chart"></canvas>
+            </div>
+            <div class="chart-container">
+                <h3 class="chart-title">Comments by Category</h3>
+                <canvas id="category-chart"></canvas>
+            </div>
+        </div>
+
+        <!-- Search & Filter -->
+        <div class="search-filter">
+            <input 
+                type="text" 
+                class="search-input" 
+                id="search-input" 
+                placeholder="Search comments..."
+                onkeyup="filterComments()"
+            >
+            <select id="category-filter" onchange="filterComments()">
+                <option value="">All Categories</option>
+                <option value="Hate Speech">Hate Speech</option>
+                <option value="Offensive Language">Offensive Language</option>
+                <option value="Spam">Spam</option>
+                <option value="Threat">Threat</option>
+                <option value="Harassment">Harassment</option>
+                <option value="Safe / Positive">Safe / Positive</option>
+            </select>
+            <select id="status-filter" onchange="filterComments()">
+                <option value="">All Status</option>
+                <option value="unreviewed">Unreviewed</option>
+                <option value="reviewed">Reviewed</option>
+                <option value="approved">Approved</option>
+            </select>
+        </div>
+
+        <!-- Comments Table -->
+        <div class="comments-table">
+            <div class="table-title">Recent Comments (Last 100)</div>
+            <div class="responsive" id="table-container">
+                <table id="comments-table">
+                    <thead>
+                        <tr>
+                            <th>Comment</th>
+                            <th>Category</th>
+                            <th>Toxicity</th>
+                            <th>Confidence</th>
+                            <th>Status</th>
+                            <th>Date & Time</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="table-body">
+                        <tr>
+                            <td colspan="7" style="text-align: center; padding: 40px;">Loading comments...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let allComments = [];
+        let filteredComments = [];
+        let toxicityChart, categoryChart;
+
+        // Load data on page load
+        window.addEventListener('load', () => {
+            loadStats();
+            loadComments();
+            initCharts();
+        });
+
+        // Load statistics
+        async function loadStats() {
+            try {
+                const response = await fetch('/api/stats');
+                const stats = await response.json();
+
+                document.getElementById('total-comments').textContent = stats.total_comments;
+                document.getElementById('toxic-comments').textContent = stats.toxic_comments;
+                document.getElementById('safe-comments').textContent = stats.safe_comments;
+                document.getElementById('toxic-percentage').textContent = `${stats.toxic_percentage}% of total`;
+                document.getElementById('safe-percentage').textContent = `${(100 - stats.toxic_percentage).toFixed(2)}% of total`;
+
+                // Update charts
+                updateToxicityChart(stats);
+                updateCategoryChart(stats.category_breakdown);
+            } catch (error) {
+                console.error('Error loading stats:', error);
+            }
+        }
+
+        // Load comments
+        async function loadComments() {
+            try {
+                const response = await fetch('/api/comments');
+                allComments = await response.json();
+                filteredComments = allComments;
+                renderComments();
+            } catch (error) {
+                console.error('Error loading comments:', error);
+            }
+        }
+
+        // Render comments in table
+        function renderComments() {
+            const tbody = document.getElementById('table-body');
+            
+            if (filteredComments.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 40px;">No comments found.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = filteredComments.map(comment => `
+                <tr>
+                    <td class="comment-text">${escapeHtml(comment.original_text)}</td>
+                    <td>
+                        <span class="badge badge-${comment.badge_color}">
+                            ${comment.category}
+                        </span>
+                    </td>
+                    <td>
+                        <strong>${(comment.toxicity_score * 100).toFixed(0)}%</strong>
+                    </td>
+                    <td>${(comment.confidence * 100).toFixed(0)}%</td>
+                    <td>
+                        <select class="action-btn" onchange="updateStatus(${comment.id}, this.value)">
+                            <option value="unreviewed" ${comment.status === 'unreviewed' ? 'selected' : ''}>Unreviewed</option>
+                            <option value="reviewed" ${comment.status === 'reviewed' ? 'selected' : ''}>Reviewed</option>
+                            <option value="approved" ${comment.status === 'approved' ? 'selected' : ''}>Approved</option>
+                        </select>
+                    </td>
+                    <td>${new Date(comment.created_at).toLocaleString()}</td>
+                    <td>
+                        <div class="action-buttons">
+                            <button class="action-btn delete" onclick="deleteComment(${comment.id})">Delete</button>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // Filter comments
+        function filterComments() {
+            const searchTerm = document.getElementById('search-input').value.toLowerCase();
+            const category = document.getElementById('category-filter').value;
+            const status = document.getElementById('status-filter').value;
+
+            filteredComments = allComments.filter(comment => {
+                const matchesSearch = comment.original_text.toLowerCase().includes(searchTerm);
+                const matchesCategory = !category || comment.category === category;
+                const matchesStatus = !status || comment.status === status;
+                return matchesSearch && matchesCategory && matchesStatus;
+            });
+
+            renderComments();
+        }
+
+        // Delete comment
+        async function deleteComment(id) {
+            if (confirm('Are you sure you want to delete this comment?')) {
+                try {
+                    await fetch(`/api/comments/${id}`, { method: 'DELETE' });
+                    loadStats();
+                    loadComments();
+                } catch (error) {
+                    console.error('Error deleting comment:', error);
+                }
+            }
+        }
+
+        // Update comment status
+        async function updateStatus(id, status) {
+            try {
+                await fetch(`/api/comments/${id}/status`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status })
+                });
+                loadComments();
+            } catch (error) {
+                console.error('Error updating status:', error);
+            }
+        }
+
+        // Initialize charts
+        function initCharts() {
+            const ctxToxicity = document.getElementById('toxicity-chart').getContext('2d');
+            toxicityChart = new Chart(ctxToxicity, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Toxic', 'Safe'],
+                    datasets: [{
+                        data: [0, 0],
+                        backgroundColor: [
+                            'rgba(239, 68, 68, 0.5)',
+                            'rgba(34, 197, 94, 0.5)'
+                        ],
+                        borderColor: [
+                            'rgba(239, 68, 68, 1)',
+                            'rgba(34, 197, 94, 1)'
+                        ],
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            labels: { color: '#e2e8f0', font: { size: 14 } }
+                        }
+                    }
+                }
+            });
+
+            const ctxCategory = document.getElementById('category-chart').getContext('2d');
+            categoryChart = new Chart(ctxCategory, {
+                type: 'bar',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Count',
+                        data: [],
+                        backgroundColor: 'rgba(59, 130, 246, 0.5)',
+                        borderColor: 'rgba(59, 130, 246, 1)',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    indexAxis: 'y',
+                    plugins: {
+                        legend: {
+                            labels: { color: '#e2e8f0', font: { size: 14 } }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: { color: '#94a3b8' },
+                            grid: { color: 'rgba(148, 163, 184, 0.1)' }
+                        },
+                        y: {
+                            ticks: { color: '#94a3b8' },
+                            grid: { color: 'rgba(148, 163, 184, 0.1)' }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Update toxicity chart
+        function updateToxicityChart(stats) {
+            if (toxicityChart) {
+                toxicityChart.data.datasets[0].data = [
+                    stats.toxic_comments,
+                    stats.safe_comments
+                ];
+                toxicityChart.update();
+            }
+        }
+
+        // Update category chart
+        function updateCategoryChart(categoryData) {
+            if (categoryChart) {
+                const labels = Object.keys(categoryData);
+                const data = Object.values(categoryData);
+                categoryChart.data.labels = labels;
+                categoryChart.data.datasets[0].data = data;
+                categoryChart.update();
+            }
+        }
+
+        // Export CSV
+        async function exportCSV() {
+            try {
+                const response = await fetch('/api/export/csv');
+                const blob = await response.blob();
+                downloadFile(blob, 'comments_export.csv', 'text/csv');
+            } catch (error) {
+                console.error('Error exporting CSV:', error);
+                alert('Failed to export CSV');
+            }
+        }
+
+        // Export PDF
+        async function exportPDF() {
+            try {
+                const response = await fetch('/api/export/pdf');
+                const blob = await response.blob();
+                downloadFile(blob, 'comments_export.pdf', 'application/pdf');
+            } catch (error) {
+                console.error('Error exporting PDF:', error);
+                alert('Failed to export PDF');
+            }
+        }
+
+        // Helper to download file
+        function downloadFile(blob, filename, type) {
+            const url = window.URL.createObjectURL(new Blob([blob], { type }));
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        }
+
+        // Escape HTML
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Refresh data
+        function refreshData() {
+            loadStats();
+            loadComments();
+        }
+
+        // Auto-refresh every 30 seconds
+        setInterval(refreshData, 30000);
+    </script>
+</body>
+</html>

@@ -1,0 +1,73 @@
+# Virtual Environment
+venv/
+env/
+ENV/
+.venv
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# Flask
+instance/
+.webassets-cache
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+comments.db
+
+# IDE & Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+.project
+.pydevproject
+.settings/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+tmp/
+
+# OS
+.DS_Store
+Thumbs.db
+*.pid
+
+# Testing
+.coverage
+htmlcov/
+.pytest_cache/
+
+# Distribution
+build/
+dist/
+*.egg
+*.egg-info/
+
+# Backup files
+*.bak
+*.backup
+*~
+*.orig
