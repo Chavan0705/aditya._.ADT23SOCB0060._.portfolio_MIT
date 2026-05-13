@@ -7,21 +7,18 @@ from flask import Flask, request, jsonify, render_template, send_file
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 from datetime import datetime
-import joblib
 import numpy as np
-import pickle
 import os
-from io import BytesIO
+from io import BytesIO, StringIO
 import csv
-from reportlab.lib.pagesizes import letter, A4
+from reportlab.lib.pagesizes import letter
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 from reportlab.lib.units import inch
-import re
 
 # Initialize Flask App
-app = Flask(__name__)
+app = Flask(__name__, template_folder='templates')
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///comments.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
@@ -66,20 +63,6 @@ class Comment(db.Model):
         else:
             return 'green'
 
-# ==================== ML MODEL LOADING ====================
-# Load pre-trained model and vectorizer
-MODEL_PATH = 'toxic_model.pkl'
-VECTORIZER_PATH = 'vectorizer.pkl'
-
-try:
-    model = joblib.load(MODEL_PATH)
-    vectorizer = joblib.load(VECTORIZER_PATH)
-    print("✓ Model and Vectorizer loaded successfully")
-except FileNotFoundError:
-    print("⚠ Model files not found. Running in demo mode.")
-    model = None
-    vectorizer = None
-
 # ==================== CLASSIFICATION LOGIC ====================
 TOXIC_KEYWORDS = {
     'hate_speech': ['racist', 'bigot', 'discrimination', 'ethnicity'],
@@ -121,22 +104,22 @@ def categorize_comment(text, toxicity_score):
 
 def predict_toxicity(text):
     """
-    Predict toxicity using ML model
+    Generate toxicity prediction
+    Uses keyword matching and random simulation for demo
     """
-    if not model or not vectorizer:
-        # Demo prediction if model not available
-        return np.random.uniform(0.2, 0.8)
+    # Demo prediction based on keywords
+    text_lower = text.lower()
     
-    try:
-        vectorized = vectorizer.transform([text])
-        prediction = model.predict(vectorized)[0]
-        probability = model.predict_proba(vectorized)[0]
-        
-        # Return probability of toxic class
-        return probability[1] if len(probability) > 1 else prediction
-    except Exception as e:
-        print(f"Error in prediction: {e}")
-        return np.random.uniform(0.2, 0.8)
+    # Count toxic keywords
+    toxic_count = 0
+    for keywords in TOXIC_KEYWORDS.values():
+        toxic_count += sum(1 for keyword in keywords if keyword in text_lower)
+    
+    # Return score based on keywords, with some randomness for demo
+    if toxic_count > 0:
+        return min(0.95, 0.6 + (toxic_count * 0.15))
+    else:
+        return np.random.uniform(0.1, 0.4)
 
 # ==================== API ROUTES ====================
 
@@ -144,7 +127,10 @@ def predict_toxicity(text):
 def analyze_comment():
     """Analyze a comment and store in database"""
     try:
-        data = request.json
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'Invalid JSON'}), 400
+            
         text = data.get('text', '').strip()
         
         if not text or len(text) < 2:
@@ -222,7 +208,10 @@ def update_comment_status(comment_id):
         if not comment:
             return jsonify({'error': 'Comment not found'}), 404
         
-        data = request.json
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'Invalid JSON'}), 400
+            
         new_status = data.get('status')
         
         if new_status not in ['unreviewed', 'reviewed', 'approved']:
@@ -275,20 +264,36 @@ def export_csv():
     try:
         comments = Comment.query.all()
         
-        output = BytesIO()
-        writer = csv.writer(output.getvalue().decode('utf-8').splitlines())
+        # Create CSV in memory
+        output = StringIO()
+        writer = csv.writer(output)
         
         # Headers
-        output.write('ID,Comment,Category,Toxicity Score,Confidence,Status,Is Toxic,Date & Time\n')
+        writer.writerow(['ID', 'Comment', 'Category', 'Toxicity Score', 'Confidence', 'Status', 'Is Toxic', 'Date & Time'])
         
         # Data
         for comment in comments:
-            output.write(f'{comment.id},"{comment.original_text}",{comment.category},{comment.toxicity_score},{comment.confidence},{comment.status},{comment.is_toxic},{comment.created_at}\n')
+            writer.writerow([
+                comment.id,
+                comment.original_text,
+                comment.category,
+                f"{comment.toxicity_score:.2f}",
+                f"{comment.confidence:.2f}",
+                comment.status,
+                'Yes' if comment.is_toxic else 'No',
+                comment.created_at.strftime('%Y-%m-%d %H:%M:%S')
+            ])
         
-        return output.getvalue(), 200, {
-            'Content-Type': 'text/csv',
-            'Content-Disposition': 'attachment; filename=comments_export.csv'
-        }
+        # Convert to bytes
+        output.seek(0)
+        csv_bytes = BytesIO(output.getvalue().encode('utf-8'))
+        
+        return send_file(
+            csv_bytes,
+            mimetype='text/csv',
+            as_attachment=True,
+            download_name='comments_export.csv'
+        )
     
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -327,9 +332,10 @@ def export_pdf():
         # Table
         data = [['ID', 'Comment', 'Category', 'Score', 'Status']]
         for comment in comments[:50]:  # Limit to 50 for PDF
+            comment_text = comment.original_text[:50] + '...' if len(comment.original_text) > 50 else comment.original_text
             data.append([
                 str(comment.id),
-                comment.original_text[:50],
+                comment_text,
                 comment.category,
                 f"{comment.toxicity_score:.2f}",
                 comment.status
@@ -380,4 +386,4 @@ def init_db():
 
 if __name__ == '__main__':
     init_db()
-    app.run(debug=True, port=5000)
+    app.run(debug=True, host='0.0.0.0', port=5000)
